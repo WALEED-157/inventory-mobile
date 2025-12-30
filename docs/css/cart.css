@@ -1,0 +1,51 @@
+:root{
+  --primary:#2563eb;
+}
+
+/* صندوق ربح الصنف الحالي */
+.current-item-profit{
+  margin:6px 0 8px;
+  padding:8px 10px;
+  background:#f1f5f9;
+  border-radius:12px;
+  border:1px solid rgba(148,163,184,0.5);
+  font-size:11px;
+  display:none;
+}
+.current-item-title{
+  font-weight:700;
+  color:var(--primary);
+  margin-bottom:4px;
+  text-align:center;
+  font-size:12px;
+}
+.current-item-values{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  font-weight:600;
+  direction:ltr;
+  font-size:11px;
+}
+.current-item-values span{
+  flex:1;
+  text-align:center;
+  padding:4px 6px;
+  border-radius:8px;
+  background:#e5f0ff;
+  color:#0f172a;
+}
+
+/* مثال بسيط للسلة */
+.cart-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.4);
+}
+.cart-card{
+  background:#fff;
+  margin:10vh auto;
+  max-width:400px;
+  padding:12px;
+  border-radius:12px;
+}
