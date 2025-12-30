@@ -146,3 +146,13 @@ function updateCartNewPrice(part, price, live=false){
   updateCurrentItemProfit(part);
   if(!live) openCart();
 }
+/* ===== SAFE GUARDS (TEMP) ===== */
+if (typeof showNotification !== "function") {
+  function showNotification(msg){
+    console.log("[NOTIFY]", msg);
+  }
+}
+
+if (typeof runSearchSales !== "function") {
+  function runSearchSales(){}
+}
