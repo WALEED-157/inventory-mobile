@@ -1,158 +1,169 @@
-/* ================== CART FUNCTIONS ================== */
+/* ================== CONFIG ================== */
+const API_URL =
+  "https://script.google.com/macros/s/AKfycbwJblWxDTa3sOUQQwm5xoX3Cua6ixm0nFPHuXqRGRU7I0iP4d86vVIdWrXJP2ei8_km/exec";
 
+/* ================== SAFE GUARDS ================== */
+if (typeof showNotification !== "function") {
+  function showNotification(msg) {
+    console.log("[NOTIFY]", msg);
+  }
+}
+
+/* ================== STATE ================== */
 let SALES_CART = [];
+let ALL_ITEMS = [];
 
-/* إضافة للعربة */
-function addToCart(item){
-  const existing = SALES_CART.find(c => c.part === item.part);
-  if(!existing){
+/* ================== FETCH DATA ================== */
+async function fetchSales() {
+  try {
+    const res = await fetch(API_URL + "?mode=sales");
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error("API ERROR:", err);
+    return [];
+  }
+}
+
+/* ================== INIT ================== */
+document.addEventListener("DOMContentLoaded", async () => {
+  ALL_ITEMS = await fetchSales();
+  renderResults(ALL_ITEMS);
+  updateCartDisplay();
+});
+
+/* ================== RENDER ================== */
+function renderResults(items) {
+  const box = document.getElementById("results");
+  if (!box) return;
+
+  if (!items.length) {
+    box.innerHTML = "<p style='text-align:center'>لا توجد بيانات</p>";
+    return;
+  }
+
+  box.innerHTML = items
+    .map(
+      (item) => `
+    <div class="product-card" style="border:1px solid #ddd;padding:8px;margin:6px;border-radius:8px">
+      <div><b>${item.part}</b> - ${item.name}</div>
+      <div>الكمية: ${item.qty}</div>
+      <div>سعر البيع: ${item.maxPrice}</div>
+      <button onclick='addToCart(${encodeURIComponent(
+        JSON.stringify(item)
+      )})'>
+        إضافة للسلة
+      </button>
+    </div>
+  `
+    )
+    .join("");
+}
+
+/* ================== CART ================== */
+function addToCart(encodedItem) {
+  const item = JSON.parse(decodeURIComponent(encodedItem));
+  const existing = SALES_CART.find((c) => c.part === item.part);
+
+  if (!existing) {
     SALES_CART.push({
       ...item,
-      cartQty: 1
+      cartQty: 1,
+      cartNewPrice: item.maxPrice,
     });
-    showNotification("✓ تم إضافة الصنف للعربة");
+    showNotification("تمت الإضافة للسلة");
     updateCartDisplay();
-    runSearchSales();
   }
 }
 
-/* حذف من العربة */
-function removeFromCart(part){
-  SALES_CART = SALES_CART.filter(c => c.part !== part);
+function removeFromCart(part) {
+  SALES_CART = SALES_CART.filter((c) => c.part !== part);
   updateCartDisplay();
-  const cartOverlay = document.querySelector(".cart-overlay");
-  if(cartOverlay) cartOverlay.remove();
-  if (typeof runSearchSales === "function") runSearchSales();
+  const ov = document.querySelector(".cart-overlay");
+  if (ov) ov.remove();
 }
 
-/* تحديث أيقونة العربة */
-function updateCartDisplay(){
-  const cartBtn   = document.getElementById("cartBtn");
-  const cartCount = document.getElementById("cartCount");
-  if(!cartBtn || !cartCount) return;
+function updateCartDisplay() {
+  const btn = document.getElementById("cartBtn");
+  const count = document.getElementById("cartCount");
+  if (!btn || !count) return;
 
-  if(SALES_CART.length > 0){
-    cartBtn.style.display = "flex";
-    cartCount.textContent = SALES_CART.length;
-    cartCount.style.display = "flex";
-  }else{
-    cartBtn.style.display = "none";
-    cartCount.style.display = "none";
+  if (SALES_CART.length) {
+    btn.style.display = "flex";
+    count.style.display = "flex";
+    count.textContent = SALES_CART.length;
+  } else {
+    btn.style.display = "none";
+    count.style.display = "none";
   }
 }
 
-/* فتح العربة */
-function openCart(){
-  if(!SALES_CART.length){
+/* ================== CART UI ================== */
+function openCart() {
+  if (!SALES_CART.length) {
     showNotification("السلة فارغة");
     return;
   }
 
-  const existing = document.querySelector(".cart-overlay");
-  if(existing) existing.remove();
+  const old = document.querySelector(".cart-overlay");
+  if (old) old.remove();
 
   let totalCost = 0;
-  let totalNewPrice = 0;
+  let totalSale = 0;
 
-  SALES_CART.forEach(item => {
-    const cost = (Number(item.cost) || 0) * item.cartQty;
-    const price = (Number(item.cartNewPrice) || Number(item.maxPrice) || 0) * item.cartQty;
-    totalCost += cost;
-    totalNewPrice += price;
+  SALES_CART.forEach((i) => {
+    totalCost += i.cost * i.cartQty;
+    totalSale += i.cartNewPrice * i.cartQty;
   });
 
-  const totalProfit = totalNewPrice - totalCost;
-  const profitPercent = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
-  const totalWithTax = totalNewPrice * 1.15;
+  const profit = totalSale - totalCost;
+  const vatTotal = totalSale * 1.15;
 
   const ov = document.createElement("div");
   ov.className = "cart-overlay";
   ov.innerHTML = `
     <div class="cart-card">
-      <div class="cart-header">
-        <strong>سلة المبيعات</strong>
-        <button class="cart-close" onclick="this.closest('.cart-overlay').remove()">✕</button>
-      </div>
+      <h3>سلة المبيعات</h3>
 
-      ${SALES_CART.map((item,i)=>`
-        <div class="cart-row" onclick="selectCartRow('${item.part}')">
-          <div><b>${i+1}.</b> ${item.part}</div>
-          <input type="number" min="1" value="${item.cartQty}"
-            onchange="updateCartQty('${item.part}',this.value)">
-          <input type="number" step="0.01"
-            value="${(item.cartNewPrice||item.maxPrice||0)}"
-            oninput="updateCartNewPrice('${item.part}',this.value,true)">
-          <button onclick="event.stopPropagation();removeFromCart('${item.part}')">✕</button>
+      ${SALES_CART.map(
+        (i) => `
+        <div style="margin-bottom:6px">
+          <b>${i.part}</b> - ${i.name}<br>
+          Qty:
+          <input type="number" min="1" value="${i.cartQty}"
+            onchange="updateQty('${i.part}',this.value)">
+          Price:
+          <input type="number" value="${i.cartNewPrice}"
+            onchange="updatePrice('${i.part}',this.value)">
+          <button onclick="removeFromCart('${i.part}')">✕</button>
         </div>
-      `).join("")}
+      `
+      ).join("")}
 
-      <div class="current-item-profit" id="currentItemProfit">
-        <div class="current-item-title">Item profit</div>
-        <div class="current-item-values">
-          <span id="currentItemCost">Cost: 0</span>
-          <span id="currentItemProfitValue">Profit: 0</span>
-          <span id="currentItemProfitPercent">0%</span>
-        </div>
-      </div>
+      <hr>
+      <div>التكلفة: ${totalCost.toFixed(2)}</div>
+      <div>البيع: ${totalSale.toFixed(2)}</div>
+      <div>الربح: ${profit.toFixed(2)}</div>
+      <div>الإجمالي مع الضريبة: ${vatTotal.toFixed(2)}</div>
 
-      <div class="cart-totals">
-        <div>التكلفة: ${totalCost.toFixed(2)}</div>
-        <div>البيع: ${totalNewPrice.toFixed(2)}</div>
-        <div>الربح: ${totalProfit.toFixed(2)} (${profitPercent.toFixed(1)}%)</div>
-        <div>مع الضريبة: ${totalWithTax.toFixed(2)}</div>
-      </div>
+      <button onclick="this.closest('.cart-overlay').remove()">إغلاق</button>
     </div>
   `;
+
   document.body.appendChild(ov);
 }
 
-/* تحديد صنف داخل العربة */
-function selectCartRow(part){
-  updateCurrentItemProfit(part);
-}
-
-/* حساب ربح الصنف الحالي */
-function updateCurrentItemProfit(part){
-  const item = SALES_CART.find(c => c.part === part);
-  if(!item) return;
-
-  const cost = Number(item.cost || 0);
-  const price = Number(item.cartNewPrice || item.maxPrice || 0);
-  const qty = item.cartQty;
-
-  const profitUnit = price - cost;
-  const totalProfit = profitUnit * qty;
-  const percent = cost > 0 ? (profitUnit / cost) * 100 : 0;
-
-  document.getElementById("currentItemProfit").style.display = "block";
-  document.getElementById("currentItemCost").textContent = "Cost: " + cost.toFixed(2);
-  document.getElementById("currentItemProfitValue").textContent = "Profit: " + totalProfit.toFixed(2);
-  document.getElementById("currentItemProfitPercent").textContent = percent.toFixed(1) + "%";
-}
-
-/* تغيير الكمية */
-function updateCartQty(part, qty){
-  const item = SALES_CART.find(c => c.part === part);
-  if(!item) return;
-  item.cartQty = Math.max(1, parseInt(qty));
+/* ================== UPDATE ================== */
+function updateQty(part, qty) {
+  const item = SALES_CART.find((i) => i.part === part);
+  if (!item) return;
+  item.cartQty = Math.max(1, Number(qty));
   openCart();
 }
 
-/* تحديث السعر */
-function updateCartNewPrice(part, price, live=false){
-  const item = SALES_CART.find(c => c.part === part);
-  if(!item) return;
-  item.cartNewPrice = Math.max(0, parseFloat(price||0));
-  updateCurrentItemProfit(part);
-  if(!live) openCart();
-}
-/* ===== SAFE GUARDS (TEMP) ===== */
-if (typeof showNotification !== "function") {
-  function showNotification(msg){
-    console.log("[NOTIFY]", msg);
-  }
-}
-
-if (typeof runSearchSales !== "function") {
-  function runSearchSales(){}
+function updatePrice(part, price) {
+  const item = SALES_CART.find((i) => i.part === part);
+  if (!item) return;
+  item.cartNewPrice = Math.max(0, Number(price));
+  openCart();
 }
