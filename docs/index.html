@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -16,15 +17,20 @@
 
 <body>
 
-  <!-- مثال زر السلة (سيعمل مع cart.js) -->
-  <div style="padding:12px">
+  <!-- اختبار أن الصفحة تعمل -->
+  <h1 style="text-align:center;margin-top:40px">
+    Inventory Mobile Works ✅
+  </h1>
+
+  <!-- زر السلة -->
+  <div style="padding:12px;text-align:center">
     <button id="cartBtn" onclick="openCart()" style="display:none">
       🛒 السلة
-      <span id="cartCount" style="display:none">0</span>
+      <span id="cartCount" style="display:none"></span>
     </button>
   </div>
 
-  <!-- نتائج / محتوى -->
+  <!-- نتائج -->
   <div id="results"></div>
 
   <!-- JS -->
